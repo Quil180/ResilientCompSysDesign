@@ -1,0 +1,108 @@
+\documentclass[aspectratio=169]{beamer}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{pifont}       % For checkmarks and crossmarks (\ding{51}, \ding{55})
+\usepackage{tcolorbox}    % Modern styled callout boxes
+\tcbuselibrary{skins,breakable}
+\usepackage{booktabs}
+\usepackage{tabularx}
+
+% --- Beamer Theme & Palette ---
+\usetheme{Madrid}
+\usecolortheme{dove}
+\setbeamertemplate{navigation symbols}{} % Remove default navigation icons
+
+% --- Presentation Metadata ---
+\title[EEL 5706 - HW2]{HW2 for EEL5706}
+\author{Yousef Awad}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}{AN Code \& Residue Code Pros + Cons}
+
+  \begin{columns}[T, onlytextwidth]
+
+    % Column 1
+    \begin{column}{0.48\textwidth}
+      \centering{\textbf{\large AN Code}}
+      \vspace{0.2cm}
+
+      \begin{exampleblock}{Pros}
+        \begin{itemize}\footnotesize
+          \item Single Widened ALU path
+          \item Immune to zero-residue masking via single-bit flips adding an error of $\pm 2$
+        \end{itemize}
+      \end{exampleblock}
+
+      \begin{alertblock}{Cons}
+        \begin{itemize}\footnotesize
+          \item High decoding latency (via integer division)
+          \item Complex multiplication overhead from $Ax * Ay = A^2xy$
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+
+    \hfill
+
+    % Column 2
+    \begin{column}{0.48\textwidth}
+      \centering{\textbf{\large Residue Code}}
+      \vspace{0.2cm}
+
+      \begin{exampleblock}{Pros}
+        \begin{itemize}\footnotesize
+          \item Zero Decoding Latency
+          \item Parallel check logic operates concurrently with execution path
+        \end{itemize}
+      \end{exampleblock}
+
+      \begin{alertblock}{Cons}
+        \begin{itemize}\footnotesize
+          \item Requires hardware duplcation (residue ALU \& comparator logic)
+          \item Vulnerable to zero-residue error masking during multiplication steps
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+
+  \end{columns}
+\end{frame}
+
+% --- Frame 2: Zero-Residue Problem & Mitigation ---
+\begin{frame}{Mitigations to Zero-Residue Error Masking in Residue Code}
+
+  % Top Section: Question & Context
+  \begin{block}{\textbf{Original Question \& My Context of Understanding}}
+    \small
+    \textbf{Question:} \textit{For multiplication, Residue Code can encounter the
+      zero-residue problem. That is, using $C_N*C_M$ to check $N*M$, if $C_N=0$, then any error that occurs in
+      M cannot be detected. How to mitigate this problem? (25 pts, $C_N = N \bmod A$, $C_M = M \bmod A$)
+    }
+    \vspace{0.1cm}
+
+    \textbf{My understanding of the problem:} \textit{Given that N is a multiple of A, and that $C_N = 0$ plus $C_{N*M} = C_N*C_M$,
+      this means that $0 = (0*C_M) \bmod A$ which then expands to $0 = (0*[M \bmod A]) \bmod A$. $\therefore$ if
+      any errors occur to M, and therefore $C_M$, it would go completely undetected.
+    }
+  \end{block}
+
+  \vspace{0.15cm}
+
+  % Bottom Section: Answer & Mitigations
+  \begin{exampleblock}{\textbf{Mitigation Strategies}}
+    \small
+    \begin{itemize}\footnotesize
+      \item \textbf{Operand Offset Shifting N:} Whenever $C_N = 0$ is detected, turn N to $N' = N + 1$ and then
+        compute $(N + 1)*M - M = N*M$ so that M (and $C_M$) can correctly occur, and then on the final product it
+        generates it subtracts M to get the correct result.
+      \item \textbf{Inverse Residue Coding:} If you detect that $C_N = 0$ simply compute the compliment so
+        that you can detect any faults in M or $C_M$. Therefore you would use $C'_N = A - (N \bmod A)$ to replace 
+        $C_N$.
+    \end{itemize}
+  \end{exampleblock}
+
+\end{frame}
+
+\end{document}
