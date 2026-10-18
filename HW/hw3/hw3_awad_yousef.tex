@@ -1,0 +1,102 @@
+\documentclass[10pt]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.65in, top=0.55in, bottom=0.55in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{microtype}
+\usepackage{hyperref}
+
+\pagestyle{empty}
+\hypersetup{hidelinks}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\begin{document}
+
+% --- Title Block ---
+\begin{center}
+	{\Large \textbf{Homework \#3}}\\[0.25em]
+	{\normalsize Yousef Awad}\\[0.2em]
+	{\small October 18, 2026}
+\end{center}
+
+\vspace{0.8em}
+\noindent{\textbf{\large Questions 1 \& 2: Fault Detection and Correction Methods}}
+
+\vspace{0.4em}
+\noindent For $C = AB$ (MMM, $A,B \in \mathbb{R}^{n\times n}$) and $y = Ax$ (MVM, $A \in \mathbb{R}^{m\times n}$). ``Memory'' covers weights/activations at rest in DRAM/HBM/SRAM; ``Compute'' covers the multiply-accumulate (MAC) datapath.
+
+\vspace{0.6em}
+\noindent\textbf{Table 1: Fault Detection Methods}
+\vspace{0.25em}
+
+{\small
+	\noindent
+	\begin{tabularx}{\textwidth}{@{} L{3.9cm} L{1.7cm} Y Y @{}}
+		\toprule
+		\textbf{Method}                                   & \textbf{Focus}     & \textbf{Advantages}                                                       & \textbf{Disadvantages}                          \\
+		\midrule
+		\textbf{Parity}                                   & Memory             & 1 bit/word; trivial logic                                                 & Odd-bit errors only                             \\
+		\textbf{CRC}                                      & Memory / link      & Strong burst detection; cheap encoder                                     & Needs retry or companion ECC                    \\
+		\textbf{SEC-DED (Hamming)}                        & Memory             & Detects 2-bit errors; low latency                                         & 12.5\% storage; misses chip faults              \\
+		\textbf{Residue code (mod $A$)}                   & Compute            & Small checker; preserved under $+$, $\times$                              & Zero-residue blind spot                         \\
+		\textbf{AN code}                                  & Compute            & Checks arithmetic directly                                                & Re-encoding; $AN \times AN$ needs $1/A$ fix     \\
+		\textbf{Range assertions / activation statistics} & Mem / Compute      & Near-zero cost; catches NaN/Inf, large flips                              & Misses small in-range errors                    \\
+		\textbf{ABFT sum checksum (Huang--Abraham)}       & Compute (+ memory) & $O(n^2)$ check for $O(n^3)$ MMM; offline checksums also catch bad weights & FP tolerance needed; MVM checksum cannot locate \\
+		\textbf{Dual Modular Redundancy (spatial)}        & Compute            & Catches any single-copy fault                                             & 100\% area; can't tell which copy failed        \\
+		\textbf{Re-execution / RESO (temporal)}           & Compute            & No extra hardware; RESO finds permanent faults                            & $\ge$2$\times$ latency                          \\
+		\textbf{BIST / March tests}                       & Memory             & Finds hard faults for sparing                                             & Offline only; misses transients                 \\
+		\bottomrule
+	\end{tabularx}}
+
+\vspace{1.0em}
+\noindent\textbf{Table 2: Fault Correction Methods}
+\vspace{0.25em}
+
+{\small
+	\noindent
+	\begin{tabularx}{\textwidth}{@{} L{3.9cm} L{1.7cm} Y Y @{}}
+		\toprule
+		\textbf{Method}                                       & \textbf{Focus} & \textbf{Advantages}                                    & \textbf{Disadvantages}                                  \\
+		\midrule
+		\textbf{SEC-DED (Hamming)}                            & Memory         & Inline 1-bit correction                                & Fails on multi-bit/chip faults                          \\
+		\textbf{Reed--Solomon / Chipkill}                     & Memory         & Survives whole-chip failure                            & Decoder latency and area                                \\
+		\textbf{Decoupled detect-then-correct}                & Memory         & Fast common path (VECC, HBM-CASO)                      & Slow path on error; extra metadata                      \\
+		\textbf{Memory scrubbing}                             & Memory         & Stops soft-error accumulation                          & Bandwidth/power; no hard-fault fix                      \\
+		\textbf{Row/column/chip sparing}                      & Memory         & Permanently repairs hard faults                        & Limited spares; needs BIST                              \\
+		\textbf{RRNS (redundant residue number system)}       & Compute        & Corrects arithmetic errors; carry-free                 & RNS conversion cost                                     \\
+		\textbf{Full-checksum ABFT (MMM)}                     & Compute        & Row/column syndromes locate and fix one error          & One error per row/column                                \\
+		\textbf{Weighted two-checksum ABFT (MVM)}             & Compute        & Location $= \Delta_1/\Delta_0$, magnitude $= \Delta_0$ & Weights amplify FP rounding                             \\
+		\textbf{TMR / NMR}                                    & Compute        & Masking with no recovery latency                       & $>$200\% area/power; voter is a single point of failure \\
+		\textbf{Re-execution on detection}                    & Compute        & Cheap; fixes transients                                & Permanent faults recur                                  \\
+		\textbf{Approximate correction (zero-out / clipping)} & Compute        & Near-zero cost; stops error explosion                  & Inexact                                                 \\
+		\textbf{Checkpoint / rollback}                        & Compute        & Handles bursts beyond ABFT                             & Storage; variable recovery delay                        \\
+		\bottomrule
+	\end{tabularx}}
+
+\vspace{1.0em}
+\pagebreak
+\noindent{\textbf{\large Question 3: Integrated Protection Strategy \& Rationale}}
+
+\vspace{0.4em}
+\noindent\textbf{My Proposed Protection Strategy:} Use 3 tiers, with cheap detection first and then correction only whenever detection finds an error.
+\begin{itemize}\small
+	\item \textbf{Tier 1 (Memory):} RS/Chipkill ECC on DRAM/HBM (detect on every read, decode only on error), SEC-DED on SRAM buffers, plus scrubbing and BIST-guided sparing for hard faults.
+	\item \textbf{Tier 2 (Compute):} ABFT with weight checksums precomputed offline. Full checksum for MMM (row/column syndromes locate and fix the error), weighted two-checksum for MVM (location $= \Delta_1/\Delta_0$). Mod-3 residue checks on bias/scaling ops that ABFT doesn't cover.
+	\item \textbf{Tier 3 (Fallback):} If ABFT can't correct it, re-execute the tile; if the error comes back, treat it as permanent and remap to a spare PE. Zero-out only in layers that profiling shows are error-tolerant.
+\end{itemize}
+
+\noindent\textbf{Design Rationale:} TMR costs way too much with it costing $>$200\% area/power and sadly ECC
+alone leaves the MAC datapath exposed, so if we add on an Algorithm-Based Fault Tolerance method (ABFT) it can
+do the heavy lifting. As well it only adds $O(n^2)$ extra work for $O(n^3)$ MMM (at least according to my
+research using Gemini Notebook and trying to understand it more). MVM is however memory-bound (each weight used
+once), and so with it, Tier~1 matters most. Thankfully, since faults are rare every tier only pays for a
+correction whenever something is actually detected. The tiers also help back each other up: the offline weight
+checksums catch memory errors that get past ECC, and ECC keeps ABFT from seeing more errors than it can correct.
+
+\end{document}
